@@ -1,62 +1,59 @@
 import { NextResponse } from 'next/server';
 import OpenAI from 'openai';
-import { Client } from '@notionhq/client';
 
-// Initialize clients
-const notion = new Client({
-  auth: process.env.NOTION_API_KEY,
-});
-
+// Initialize OpenAI client
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
-async function fetchNotionPage(pageId: string): Promise<string> {
-  console.log(`Fetching Notion page: ${pageId}`);
+const API_URLS = {
+  url1: 'https://crustdata.notion.site/Crustdata-Dataset-API-Detailed-Examples-b83bd0f1ec09452bb0c2cac811bba88c',
+  url2: 'https://crustdata.notion.site/Crustdata-Discovery-And-Enrichment-API-c66d5236e8ea40df8af114f6d447ab48'
+};
+
+async function fetchDocumentation(url: string): Promise<string> {
   try {
-    const blocks = await notion.blocks.children.list({ block_id: pageId });
-    
-    let content = '';
-    for (const block of blocks.results) {
-      if ('paragraph' in block) {
-        const paragraph = block.paragraph.rich_text;
-        content += paragraph.map(text => text.plain_text).join('') + '\n\n';
-      }
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch documentation from ${url}`);
     }
+    const html = await response.text();
     
-    console.log(`Successfully fetched content from ${pageId}. Length: ${content.length} characters`);
-    return content;
+    // Extract text content from HTML
+    // Remove HTML tags and decode entities
+    const text = html
+      .replace(/<[^>]*>/g, '')  // Remove HTML tags
+      .replace(/&nbsp;/g, ' ')  // Replace &nbsp; with spaces
+      .replace(/&amp;/g, '&')   // Replace &amp; with &
+      .replace(/&lt;/g, '<')    // Replace &lt; with <
+      .replace(/&gt;/g, '>')    // Replace &gt; with >
+      .replace(/&quot;/g, '"')  // Replace &quot; with "
+      .replace(/\s+/g, ' ')     // Replace multiple spaces with single space
+      .trim();                  // Remove leading/trailing whitespace
+    
+    return text;
   } catch (error) {
-    console.error(`Error fetching Notion page ${pageId}:`, error);
-    throw new Error(`Failed to fetch Notion page: ${error.message}`);
+    console.error(`Error fetching documentation from ${url}:`, error);
+    throw error;
   }
 }
 
 export async function POST(request: Request) {
   try {
-    // Log environment variables (without sensitive values)
-    console.log('Environment check:', {
-      hasNotionKey: !!process.env.NOTION_API_KEY,
-      hasOpenAIKey: !!process.env.OPENAI_API_KEY,
-      modelName: process.env.OPENAI_MODEL_NAME,
-      pageId1: process.env.NOTION_PAGE_ID_1,
-      pageId2: process.env.NOTION_PAGE_ID_2,
-    });
-
     const { question } = await request.json();
     console.log('Received question:', question);
 
-    // Fetch documentation
+    // Fetch documentation from both URLs
     console.log('Fetching documentation...');
     const [doc1, doc2] = await Promise.all([
-      fetchNotionPage(process.env.NOTION_PAGE_ID_1!),
-      fetchNotionPage(process.env.NOTION_PAGE_ID_2!)
+      fetchDocumentation(API_URLS.url1),
+      fetchDocumentation(API_URLS.url2)
     ]);
 
     console.log('Documentation fetched successfully');
-
+    
     // Combine documentation
-    const combinedDocs = `Doc1:\n${doc1}\n\nDoc2:\n${doc2}`;
+    const combinedDocs = `Dataset API Documentation:\n${doc1}\n\nDiscovery API Documentation:\n${doc2}`;
     console.log('Combined documentation length:', combinedDocs.length);
 
     // Create completion with OpenAI
@@ -65,7 +62,7 @@ export async function POST(request: Request) {
       messages: [
         {
           role: "system",
-          content: "You are an API documentation assistant. Use the provided API documentation to answer user questions accurately and concisely. If the information isn't in the documentation, say so."
+          content: "You are an API documentation assistant for Crustdata. Answer questions about the Dataset API and Discovery & Enrichment API based on their documentation. Provide specific examples when available. If the information isn't in the documentation, say so."
         },
         {
           role: "user",
@@ -83,7 +80,7 @@ export async function POST(request: Request) {
     });
 
   } catch (error) {
-    console.error('Detailed error:', error);
+    console.error('Error processing request:', error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal server error' },
       { status: 500 }
