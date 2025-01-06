@@ -77,7 +77,7 @@ export async function POST(request: Request) {
           content: `Documentation:\n${combinedDocs}\n\nQuestion: ${question}`
         }
       ],
-      model: process.env.OPENAI_MODEL_NAME || "gpt-4-turbo-preview",
+      model: process.env.OPENAI_MODEL_NAME || "gpt-4o",
       temperature: 0,
     });
 
