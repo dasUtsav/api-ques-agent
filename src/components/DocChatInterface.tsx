@@ -9,7 +9,7 @@ const DocChatInterface = () => {
     }
   ]);
   const [inputValue, setInputValue] = useState('');
-  const [documents, setDocuments] = useState([]);
+  const [documents, setDocuments] = useState<File[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -77,9 +77,9 @@ const DocChatInterface = () => {
     }
   };
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    const pdfFiles = files.filter(file => {
+    const pdfFiles = files.filter((file: File) => {
       const validation = validateFile(file);
       if (!validation.valid) {
         setMessages(prev => [...prev, {
@@ -110,7 +110,7 @@ const DocChatInterface = () => {
       setDocuments(prev => [...prev, ...pdfFiles]);
       setMessages(prev => [...prev, {
         type: 'system',
-        content: `Uploaded ${pdfFiles.length} PDF(s): ${pdfFiles.map(f => f.name).join(', ')}`
+        content: 'Uploaded ' + pdfFiles.length + ' PDF(s): ' + pdfFiles.map(f => f.name).join(', ')
       }]);
     }
 

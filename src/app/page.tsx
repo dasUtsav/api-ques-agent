@@ -1,4 +1,4 @@
-import DocChatInterface from '@/components/DocChatInterface';
+import DocChatInterface from '../components/DocChatInterface';
 
 export default function Home() {
   return (
